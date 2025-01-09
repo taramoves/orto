@@ -53,6 +53,7 @@ const FractureVisualization: React.FC = () => {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const proximalBoneRef = useRef<THREE.Mesh>(null);
   const distalBoneRef = useRef<THREE.Mesh>(null);
+  const [isAnteriorView, setIsAnteriorView] = useState(true);
 
   const updateBoneGeometries = (scene: THREE.Scene): void => {
     const radius = 15;
@@ -211,6 +212,22 @@ const FractureVisualization: React.FC = () => {
     }));
   };
 
+  const toggleView = () => {
+    if (!cameraRef.current) return;
+    
+    setIsAnteriorView(prev => !prev);
+    const camera = cameraRef.current;
+    
+    if (isAnteriorView) {
+      // Move to lateral (side) view
+      camera.position.set(500, 0, 0);
+    } else {
+      // Move to anterior (front) view
+      camera.position.set(0, 0, 500);
+    }
+    camera.lookAt(0, -150, 0);
+  };
+
   return (
     <Card className="w-full max-w-7xl">
       <CardHeader>
@@ -218,10 +235,18 @@ const FractureVisualization: React.FC = () => {
       </CardHeader>
       <CardContent>
         <div className="flex flex-row gap-4">
-          <div 
-            ref={containerRef} 
-            className="w-2/3 h-[800px] bg-white rounded-lg"
-          />
+          <div className="w-2/3">
+            <button
+              onClick={toggleView}
+              className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              {isAnteriorView ? 'Switch to Side View' : 'Switch to Front View'}
+            </button>
+            <div 
+              ref={containerRef} 
+              className="w-full h-[800px] bg-white rounded-lg"
+            />
+          </div>
           <div className="w-1/3 space-y-4 overflow-y-auto max-h-[800px]">
             <div className="space-y-4">
               <h3 className="font-semibold">Displacement Measurements</h3>
