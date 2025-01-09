@@ -6,31 +6,55 @@ import * as THREE from 'three';
 
 const initialMeasurements = {
   // Fracture characteristics
-  fractureLength: 300, // Total length in mm
-  fracturePosition: 150, // Position from proximal end in mm
+  fractureLength: 300,
+  fracturePosition: 150,
   
-  // Displacement in mm (using standard anatomical terms)
-  medialDisplacement: 0,    // X-axis: + is medial, - is lateral
-  anteriorDisplacement: 0,  // Z-axis: + is anterior, - is posterior
-  proximalDisplacement: 0,  // Y-axis: + is proximal (shortening), - is distal (distraction)
+  // Displacement in mm
+  medialDisplacement: 0,
+  anteriorDisplacement: 0,
+  proximalDisplacement: 0,
   
   // Angulation in degrees
-  valgusAngulation: 0,     // Rotation around Z-axis: + is valgus, - is varus
-  anteversionAngulation: 0, // Rotation around X-axis: + is anteversion, - is retroversion
-  rotationalAngulation: 0   // Rotation around Y-axis: + is external, - is internal
-};
+  valgusAngulation: 0,
+  anteversionAngulation: 0,
+  rotationalAngulation: 0
+} as const;  // Make this object readonly
 
-const FractureVisualization = () => {
-  const [measurements, setMeasurements] = useState(initialMeasurements);
-  const containerRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-  const proximalBoneRef = useRef(null);
-  const distalBoneRef = useRef(null);
+// Type definitions
+type MeasurementKey = keyof typeof initialMeasurements;
+type Measurements = typeof initialMeasurements;
 
-  // Function to create or update bone geometries
-  const updateBoneGeometries = (scene) => {
+interface InputGroupProps {
+  label: string;
+  value: number;
+  onChange: (value: string) => void;
+  unit?: string;
+}
+
+const InputGroup: React.FC<InputGroupProps> = ({ label, value, onChange, unit = "" }) => (
+  <div className="space-y-1">
+    <label className="block text-sm font-medium">
+      {label} {unit && `(${unit})`}
+    </label>
+    <input
+      type="number"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full p-2 border rounded"
+    />
+  </div>
+);
+
+const FractureVisualization: React.FC = () => {
+  const [measurements, setMeasurements] = useState<Measurements>(initialMeasurements);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const proximalBoneRef = useRef<THREE.Mesh>(null);
+  const distalBoneRef = useRef<THREE.Mesh>(null);
+
+  const updateBoneGeometries = (scene: THREE.Scene): void => {
     const radius = 15;
     const radialSegments = 32;
 
@@ -120,6 +144,9 @@ const FractureVisualization = () => {
     const axesHelper = new THREE.AxesHelper(100);
     scene.add(axesHelper);
 
+    // Store ref value in variable for cleanup
+    const container = containerRef.current;
+
     // Initial bone creation
     updateBoneGeometries(scene);
 
@@ -133,15 +160,14 @@ const FractureVisualization = () => {
     // Cleanup
     return () => {
       renderer.dispose();
-      containerRef.current?.removeChild(renderer.domElement);
+      container?.removeChild(renderer.domElement);
     };
-  }, []);
+  }, []);  // Empty dependency array is fine here as it's setup code
 
   // Update bones when measurements change
   useEffect(() => {
     if (!sceneRef.current || !distalBoneRef.current) return;
 
-    // Update geometries when fracture position changes
     updateBoneGeometries(sceneRef.current);
 
     const distalBone = distalBoneRef.current;
@@ -157,7 +183,7 @@ const FractureVisualization = () => {
     distalBone.rotation.set(0, 0, 0);
 
     // Apply transformations relative to fracture point
-    const toRad = (deg) => (deg * Math.PI) / 180;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
 
     // Attach distal bone to pivot for rotations
     pivot.attach(distalBone);
@@ -176,28 +202,14 @@ const FractureVisualization = () => {
     sceneRef.current.attach(distalBone);
     sceneRef.current.remove(pivot);
 
-  }, [measurements]);
+  }, [measurements]);  // Add measurements to dependency array
 
-  const handleMeasurementChange = (key, value) => {
+  const handleMeasurementChange = (key: MeasurementKey, value: string): void => {
     setMeasurements(prev => ({
       ...prev,
       [key]: parseFloat(value) || 0
     }));
   };
-
-  const InputGroup = ({ label, value, onChange, unit = "" }) => (
-    <div className="space-y-1">
-      <label className="block text-sm font-medium">
-        {label} {unit && `(${unit})`}
-      </label>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-  );
 
   return (
     <Card className="w-full max-w-7xl">
